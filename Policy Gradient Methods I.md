@@ -1,3 +1,6 @@
+---
+tags: RL
+---
 # Policy Gradient Methods I
 
 So far, we have only dealt with action-value methods - that is, our policy to select actions is based on estimated action-values. 
@@ -97,7 +100,7 @@ $$\nabla_\theta J(\theta)=\nabla_\theta \mathbb{E}_{\tau \sim \pi_\theta}[R(\tau
 \pi_\theta} \left[R(\tau) \cdot \nabla_\theta \left(\sum_{t=0}^{T-1}\log
 \pi_\theta(a_t|s_t)\right)\right]$$
 
-Now, a naive approach is to gather a set of trajectories $\hat{\tau} = \{\tau_{i}\}_{i=1}^n$ and peform stochastic gradient ascent updates  $\leftarrow \theta + \alpha\nabla_\theta \mathbb{E}_{\tau \in \hat{\tau}}[R(\tau)]$ using the empirical expectation of our gradient. 
+Now, a naive approach is to gather a set of trajectories $\hat{\tau} = \{\tau_{i}\}_{i=1}^n$ and peform stochastic gradient ascent updates  $\theta \leftarrow \theta + \alpha\nabla_\theta \mathbb{E}_{\tau \in \hat{\tau}}[R(\tau)]$ using the empirical expectation of our gradient. 
 
 ![](https://i.imgur.com/M4OqKrF.png)
 
@@ -224,6 +227,7 @@ Consider the one-step actor-critic method, the analog of TD methods like TD(0), 
 & = \theta_t + \alpha \delta_t \nabla_\theta \log \pi_{\theta_t}(a_t | s_t)
 \end{align}
 
-We could even extend this to $n$-step methods or backwards-view eligibility trace.
+We could even extend this to $n$-step methods or backwards-view eligibility trace that trade off more bias for less variance. **But while high variance strategies necessitates using more samples, bias is more
+pernicious—even with an unlimited number of samples, bias can cause the algorithm to fail to converge, or to converge to a poor solution that is not even a local optimum**
 ![](https://i.imgur.com/aMYpusJ.png)
 
