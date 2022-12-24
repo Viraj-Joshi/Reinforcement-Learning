@@ -219,7 +219,7 @@ Here, REINFORCE With Baseline, which is simply stochastic gradient ascent with o
 
 In REINFORCE and REINFORCE with baseline, there is only an actor, the agent using the parameterized policy. These methods do not use bootstrapping, so despite our best efforts with the baseline, they are high-variance. 
 
-In actor methods, the state-value function estimates only the value of the first state in each transition. In actor-critic methods, we bootstrap through value functions and reduce variance in exchange for biasing our esimtae. E.g The state-value function can be applied to the second state of the transition ($R_{t+1} + \gamma\hat v(S_{t+1})$, telling the agent how good it was to take the action *(the critic).*
+In actor methods, the state-value function estimates only the value of the first state in each transition. In actor-critic methods, we bootstrap through value functions and reduce variance in exchange for biasing our estimate. E.g The state-value function can be applied to the second state of the transition ($R_{t+1} + \gamma\hat v(S_{t+1})$, telling the agent how good it was to take the action *(the critic).*
 
 Consider the one-step actor-critic method, the analog of TD methods like TD(0), SARSA(0) and Q-learning, that replace the full return of REINFORCE with the one-step return.
 \begin{align}
