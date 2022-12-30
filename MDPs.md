@@ -161,7 +161,7 @@ function p?
 
 This is just probability rules.
 
-$\mathbb{E}[R_{t+1}] = \sum\limits_{a} \pi(a|s) \sum\limits_{s',r} p(s',r|s,a)$
+$\mathbb{E}[R_{t+1}] = \sum\limits_{a} \pi(a|s) \sum\limits_{s',r} p(s',r|s,a) r$
 
 **Exercise 3.12, 3.18** 
 Give an equation for $v_{\pi}$ in terms of $q_{\pi}$ and $\pi$.
@@ -187,19 +187,20 @@ $q_\pi$ is just the one-step reward $R_{t+1}$ for taking action $a$ in state $s$
 
 \begin{equation}
 \begin{split}
-q_{\pi}(s,a) & = \mathbb{E}[R_{t+1} + \gamma G_{t+1}|S_t = s, A_t = a]\\
+q_{\pi}(s,a) & = \mathbb{E}[G_{t}|S_t = s, A_t = a] \\
+& = \mathbb{E}[R_{t+1} + \gamma G_{t+1}|S_t = s, A_t = a]\\
 & =\mathbb{E}[R_{t+1} + \gamma v_\pi(S_{t+1})|S_t = s, A_t = a]\\
 & = \sum\limits_{s',r}p(s',r|s,a) \space [r+\gamma v_\pi(s')] \\
 & = r(s,a) +\sum\limits_{s',r}p(s',r|s,a) \space \gamma v_\pi(s')
 \end{split}
 \end{equation}
 
-From line 1, the reward after $R_{t+1}$ is just the expected reward from the next state $S_{t+1}$ which is why $v_\pi(S_{t+1})$ is substituted in line 2.
+From line 2, the reward after $R_{t+1}$ is just the expected reward from the next state $S_{t+1}$ which is why $v_\pi(S_{t+1})$ is substituted in line 2.
 
 Notice how the expectation is not taken with respect to $\pi$
 
-**Bellman Expectation for $v_\pi$**
-Using the above, notice it can be viewed as a recurrence relation or one-step lookahead.
+**Bellman Expectation Equation for $v_\pi$**
+This equation is a recurrence relation or one-step lookahead.
 
 ![](https://i.imgur.com/0aF2EUe.png)
 
@@ -217,6 +218,33 @@ Note how the final expression can be read as an expected value where $\pi(a|s)p(
 3. how good is $v_\pi(s)$ is just the sample of what we got $r$ + the discounted expected value of future return in $s'$; thats in brackets
 
 In the diagram, the open circles represent states and the solid circles represent actions. These diagrams are called *backup diagrams* because they diagram the update or 'backup' operation transferring value information *back* from the successor state to the starting state or action.
+
+
+
+---
+
+We can obtain the above in another way too
+
+\begin{equation}
+\begin{split}
+v_{\pi}(s) & = \mathbb{E}_\pi[G_{t}|S_t = s] \\
+& = \mathbb{E}_\pi[R_{t+1}+\gamma G_{t+1}|S_t = s]\\
+& = \mathbb{E}_\pi[R_{t+1}|S_t=s] + \mathbb{E}_\pi[\gamma G_{t+1})|S_t = s]\\
+& {\overset{(iv)}{=}}\; 
+\sum\limits_{a}\pi(a|s)\mathbb{E}[R_{t+1}|S_t=s] + \gamma\sum\limits_{a}\pi(a|s)\mathbb{E}[G_{t+1}|S_t=s] \\
+& {\overset{(v)}{=}}\; \sum\limits_{a}\pi(a|s)\sum\limits_{s',r}p(s',r|s,a)r + \gamma\sum\limits_{a}\pi(a|s)\sum\limits_{s',r} p(s',r|s,a)\mathbb{E}[G_{t+1}|S_{t+1}=s']\\
+& {\overset{(vi)}{=}}\;\sum\limits_{a}\pi(a|s)\sum\limits_{s',r}p(s',r|s,a)r + \gamma\sum\limits_{a}\pi(a|s)\sum\limits_{s',r} p(s',r|s,a)v_\pi(s')\\
+& {\overset{(vii)}{=}}\; 
+\sum\limits_{a} \pi(a|s) \sum\limits_{s',r}p(s',r|s,a) \space [r+\gamma v_\pi(s')] \\
+\end{split}
+\end{equation}
+
+*(iv)* is marginalizing the action out of the conditional expectations
+*(v)* is taking the expectation of the remaining conditional expectations
+*(vi)* uses the definition of the value function
+
+---
+
 
 **Exercise 3.17** What is the Bellman equation for action values, that is, for $q_\pi$? It must give the action value $q_\pi(s, a)$ in terms of the action values, $q_\pi(s', a')$, of possible successors to the state–action pair (s, a).
 ![](https://i.imgur.com/40n4AOY.png)
