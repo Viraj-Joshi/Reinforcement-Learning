@@ -23,9 +23,10 @@ Then, a natural parameterization is to estimate preferences $h(s,a,\theta) \in \
 
 $$\pi(s,a,\theta) = \frac{e^{h(s,a,\theta)}}{\sum_b e^{h(s,b,\theta)}}$$
 
-It is important to distinguish that action preferences are not action-values. Instead, action preferences are driven to produce optimal stochastic policy. *That is, policy gradient methods provide the flexibility that the optimal policy could be stochastic or deterministic.* E.g in the face of imperfect information, stochastic policy is best (ex: poker)
+It is important to distinguish that action preferences are not action-values. Instead, action preferences are driven to produce optimal stochastic policy. A deterministic policy is formed when preferences of the optimal actions will be driven infinitely higher than all suboptimal actions. **That is, parameterizing policies according to the soft-max in action preferences provide the flexibility that the optimal policy could be stochastic or deterministic.** E.g in the face of imperfect information, stochastic policy is best (ex: poker)
 
-Even if you apply softmax to action preferences,in $\epsilon$-greedy selection, the action probabilities can change dramatically for a small change in the estimated action values whereas the action probabilities change smoothly, with respect to the action preferences with policy gradient methods. 
+In contrast, applying the softmax over action-values may result in a stochastic but not deterministic policy. This is because the action-values will converge with some finite differences and thus translate to probabilties other than 0 or 1.
+
 
 Examine the following:
 
@@ -33,13 +34,15 @@ Examine the following:
 
 We see above that action-value methods using $\epsilon$-greedy action selection(as often is the case) can do worse because there is always an $\epsilon$ probability of selecting a random action(**can never approach a deterministic policy**) whereas the the policy gradient method can exactly chose the optimal stochasitc policy.
 
-
 - a policy parameterization may be a simpler function to approximate than an action-value parameterization.
 - learning a value function directly may take longer to converge, but the policy is not changing (wasting compute)
 - represent continuous actions, scales to high dimensional state-spaces
-- **Finally, we note that the choice of policy parameterization is sometimes a good way of injecting prior knowledge about the desired form of the policy. This is often the most important reason for using a policy-based learning method.**
+- **the choice of policy parameterization is sometimes a good way of injecting prior knowledge about the desired form of the policy. This is often the most important reason for using a policy-based learning method.**
 
 ## Vanilla Policy Gradient Method
+
+One last benefit of policy parameterization is theoretical. With continuous policy parameterization, the action probabilities change smoothly as a function of the learned parameter, whereas applying softmax over action values and using $\epsilon$-greedy selection over these action probabilities may change dramatically
+for an arbitrarily small change in the estimated action values. This would contribute to very high-variance in the learning.
 
 As usual, our performance measure $J(\theta)$ depends on the setting - episodic or continuous. In the episodic case, define the trajectory $\tau$ as
 $$\tau = (s_0, a_0, r_1, s_1, a_1, r_2, \ldots, s_{T-1}, a_{T-1}, r_{T}, s_T)$$
@@ -54,6 +57,7 @@ $$
 Note, our performance measure depends on both the action selection and the distribution of states in which those selections are made. Both of these are affected by the policy parameter. We know the effect on the action selection (and reward) by our policy parameters. We do not know the effect of the policy changes to the state distribution?.
 
 Q: Then, how can we estimate the gradient (because $\theta$ affects the state distribution)? 
+
 A: **Policy Gradient Theorem**, which provides an analytic expression for the gradient of the performance measure w.r.t $\theta$ without the derivative of the state distribution w.r.t. $\theta$
  
 
@@ -66,7 +70,7 @@ First, observe what is called the likelihood ratio trick using the key fact $\na
 &= \mathbb{E}\Big[f(x)\nabla_\theta \log p_\theta(x)\Big]
 \end{align}
 
-Using this trick, we already have $\nabla J(\theta)$.
+Apply this trick to $\nabla J(\theta)$.
 \begin{align}
 \nabla_\theta \mathbb{E}[J(\theta)] &= \nabla_\theta \sum_\tau P(\tau;\theta) R(\tau) \\
 &= \sum_\tau P(\tau;\theta)\nabla_\theta \log P(\tau;\theta) R(\tau) \\
