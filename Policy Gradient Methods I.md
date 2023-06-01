@@ -23,7 +23,7 @@ Then, a natural parameterization is to estimate preferences $h(s,a,\theta) \in \
 
 $$\pi(s,a,\theta) = \frac{e^{h(s,a,\theta)}}{\sum_b e^{h(s,b,\theta)}}$$
 
-It is important to distinguish that action preferences are not action-values. Instead, action preferences are driven to produce optimal stochastic policy. A deterministic policy is formed when preferences of the optimal actions will be driven infinitely higher than all suboptimal actions. **That is, parameterizing policies according to the soft-max in action preferences provide the flexibility that the optimal policy could be stochastic or deterministic.** E.g in the face of imperfect information, stochastic policy is best (ex: poker)
+It is important to distinguish that action preferences are not action-values. Instead, action preferences are driven to produce optimal stochastic policy. A deterministic policy is formed when preferences of the optimal actions will be driven infinitely higher than all suboptimal actions. **That is, parameterizing policies according to the soft-max in action preferences provide the flexibility that the optimal policy could be stochastic or deterministic.** E.g in the face of imperfect information, stochastic policy is best; like poker
 
 In contrast, applying the softmax over action-values may result in a stochastic but not deterministic policy. This is because the action-values will converge with some finite differences and thus translate to probabilties other than 0 or 1.
 
@@ -41,20 +41,33 @@ We see above that action-value methods using $\epsilon$-greedy action selection(
 
 ## Vanilla Policy Gradient Method
 
-One last benefit of policy parameterization is theoretical. With continuous policy parameterization, the action probabilities change smoothly as a function of the learned parameter, whereas applying softmax over action values and using $\epsilon$-greedy selection over these action probabilities may change dramatically
+One last benefit of policy parameterization is theoretical. With continuous policy parameterization, the action probabilities change smoothly as a function of the learned parameters, whereas applying softmax over action values and using $\epsilon$-greedy selection over these action probabilities may change dramatically
 for an arbitrarily small change in the estimated action values. This would contribute to very high-variance in the learning.
 
 As usual, our performance measure $J(\theta)$ depends on the setting - episodic or continuous. In the episodic case, define the trajectory $\tau$ as
 $$\tau = (s_0, a_0, r_1, s_1, a_1, r_2, \ldots, s_{T-1}, a_{T-1}, r_{T}, s_T)$$
 
-We seek to maximize $J(\theta)$ by Stochastic Gradient Ascent. Consequently, we need $\nabla J(\theta)$. 
+and the trajectory distribution i.e the probability distribution of experiencing trajectories under the current policy parameters as
 
-$$J(\theta) =  \mathbb{E}_{\pi_{\theta}}\left[\sum_{t=1}^{T}\gamma^{t-1} r_t\right] = \mathbb{E}_{\pi_{\theta}}\left[R(\tau)\right] = \sum_{\tau} P(\tau;\theta) R(\tau)
+$$P(\tau;\theta) = p_\theta(s_1,a_1,\dots,s_T,a_T) = p(s_1)\prod_{t=0}^{T-1} \pi_\theta(a_t|s_t)p(s_{t+1}|s_t,a_t)$$ where the subscript $\theta$ emphasizes that the distribution depends on the policy parameters.
+
+We seek the optimal parameterization $\theta^*= \arg\max\limits_\theta$ $J(\theta)$ by Stochastic Gradient Ascent. 
+
+$$J(\theta) =  \mathbb{E}_{\tau \sim P(\tau;\theta)}\left[\sum_{t=1}^{T}\gamma^{t-1} r_t\right] = \mathbb{E}_{\tau \sim P(\tau;\theta)}\left[R(\tau)\right] = \sum_{\tau} P(\tau;\theta) R(\tau)
 $$
- - Notice how the expectation is taken w.r.t to the policy. This means the rewards are computed from the trajectory induced by the policy
- - $P(\tau;\theta)$ is just the probability of experiencing that trajectory under the current policy parameters 
+ - Notice the randomness in the rewards are induced by trajectories sampled from the policy
 
-Note, our performance measure depends on both the action selection and the distribution of states in which those selections are made. Both of these are affected by the policy parameter. We know the effect on the action selection (and reward) by our policy parameters. We do not know the effect of the policy changes to the state distribution?.
+### Evaluating $J(\theta)$
+
+Sample $N$ rollouts to create an unbiased estimate:
+
+$$J(\theta) = \mathbb{E}_{\tau \sim P(\tau;\theta)}\left[R(\tau)\right] \approx \frac{1}{N} \sum_i \sum_t r(s_{i,t},a_{i,t})$$
+
+---
+
+### Direct Policy Differentiation
+
+Note, our performance measure depends on both the action selection and the distribution of states in which those selections are made. Both of these are affected by the policy parameter. We know the effect on the action selection (and reward) by our policy parameters. We do not know the effect of the policy changes to the state distribution.
 
 Q: Then, how can we estimate the gradient (because $\theta$ affects the state distribution)? 
 
@@ -72,49 +85,64 @@ First, observe what is called the likelihood ratio trick using the key fact $\na
 
 Apply this trick to $\nabla J(\theta)$.
 \begin{align}
-\nabla_\theta \mathbb{E}[J(\theta)] &= \nabla_\theta \sum_\tau P(\tau;\theta) R(\tau) \\
-&= \sum_\tau P(\tau;\theta)\nabla_\theta \log P(\tau;\theta) R(\tau) \\
-&= \mathbb{E}\Big[\nabla_\theta\log P(\tau;\theta) R(\tau)]
+\nabla_\theta J(\theta) &= \nabla_\theta \sum_\tau P(\tau;\theta) R(\tau) \\
+&{\overset{(i)}{=}}\; \sum_\tau \nabla_\theta P(\tau;\theta) R(\tau)\\
+&{\overset{(ii)}{=}}\;\sum_\tau P(\tau;\theta)\nabla_\theta \log P(\tau;\theta) R(\tau) \\
+&= \mathbb{E}_{\tau \sim P(\tau;\theta)}\Big[\nabla_\theta\log P(\tau;\theta) R(\tau)]
 \end{align}
+
+* (i) moves the gradient inside the integral because differentiation is linear
+* (ii) applies the likelihood ratio trick
 
 This trick allows us to simply approximate the gradient by taking an empirical estimate of $m$ rollouts.
 $$\nabla_\theta J(\theta) \approx \sum_{i=1}^m \nabla_\theta\log P(\tau;\theta) R(\tau)$$
 
 However, we do not have the model $P$, so we cannot compute this.
-#### Intuition
-The gradient tries to increase probability of paths with positive R and decrease probability with negative R.
-
----
-
 To that end, observe how to compute $\nabla_\theta \log p_\theta(\tau;\theta)$. 
 
 \begin{align}
 \nabla_\theta \log p_\theta(\tau) &= \nabla \log \left(\mu(s_0) \prod_{t=0}^{T-1} \pi_\theta(a_t|s_t)P(s_{t+1}|s_t,a_t)\right) \\
 &= \nabla_\theta \left[\log \mu(s_0)+ \sum_{t=0}^{T-1} (\log \pi_\theta(a_t|s_t) + \log P(s_{t+1}|s_t,a_t)) \right]\\
-&= \nabla_\theta \sum_{t=0}^{T-1}\log \pi_\theta(a_t|s_t)
+&{\overset{(iii)}{=}}\; \nabla_\theta \sum_{t=0}^{T-1}\log \pi_\theta(a_t|s_t) \\
+&{\overset{(iv)}{=}}\;  \sum_{t=0}^{T-1}\nabla_\theta\log \pi_\theta(a_t|s_t)
 \end{align}
 
 - $\mu(s_0)$ is just the starting state distribution
 - Again, $P(\tau;\theta)$ was just decomposed into the chain of probabilities given by the MDP assumption and the policy
-- Notice how the dynamics cancel out!
+- (iii) Notice how the derivatives of the dynamics are zero!
+- (iv) moves the gradient inside the summation
 
-Finally, we can combine these two tricks to compute the gradient of the performance measure $J(\theta)$.
+This gives us
 
-$$\nabla_\theta J(\theta)=\nabla_\theta \mathbb{E}_{\tau \sim \pi_\theta}[R(\tau)] = \mathbb{E}_{\tau \sim
-\pi_\theta} \left[R(\tau) \cdot \nabla_\theta \left(\sum_{t=0}^{T-1}\log
+$$\nabla_\theta J(\theta)=\nabla_\theta \mathbb{E}_{\tau \sim P(\tau;\theta)}[R(\tau)] = \mathbb{E}_{\tau \sim
+P(\tau;\theta)} \left[R(\tau) \cdot \left(\sum_{t=0}^{T-1}\nabla_\theta \log
 \pi_\theta(a_t|s_t)\right)\right]$$
 
-Now, a naive approach is to gather a set of trajectories $\hat{\tau} = \{\tau_{i}\}_{i=1}^n$ and peform stochastic gradient ascent updates  $\theta \leftarrow \theta + \alpha\nabla_\theta \mathbb{E}_{\tau \in \hat{\tau}}[R(\tau)]$ using the empirical expectation of our gradient. 
+Finally, we can compute the gradient of the performance measure $J(\theta)$ because the both of the terms in the expectation, the log probs of the policy and the return, are known.
+
+The unknown quantities, the starting state distribution and the transition function, occur only in distribution from which the expectation is taken. 
+
+This means we can gather a set of trajectories $\hat{\tau} = \{\tau_{i}\}_{i=1}^n$ and calculate the empirical expectation of our gradient 
+$$\nabla_\theta J(\theta) \approx \frac{1}{N}\sum_{i=1}^N R(\tau_i) \cdot \left(\sum_{t=0}^{T-1}\nabla_\theta \log
+\pi_\theta(a_{t,i}|s_{t,i})\right)$$
+
+In the below algorithm, we estimate $\nabla_\theta J(\theta)$ from one trajectory.
 
 ![](https://i.imgur.com/M4OqKrF.png)
 
 However, learning with these updates is slow and unreliable as the gradient estimator is high-variance. We can reduce the variance of this estimator by introducing a baseline subtracted from the return.
 
+### Intuition
+The gradient step tries to increase probability of paths with positive R and decrease probability with negative R.
+
+Think of it like weighted maximum likelihood 
+
 ---
 
 ### Baseline
 
-Before we introduce a baseline, we can leverage the temporal structure of the MDP to simplify the reward
+Before we introduce a baseline, we leverage the temporal structure of the MDP to simplify the reward term
+
 \begin{align}
 \nabla_\theta \mathbb{E}_{\tau \sim \pi_\theta}\Big[R(\tau)\Big] \;&{\overset{(i)}{=}}\; \mathbb{E}_{\tau \sim \pi_\theta} \left[\left(\sum_{t=0}^{T-1}r_t\right) \cdot \nabla_\theta \left(\sum_{t=0}^{T-1}\log \pi_\theta(a_t|s_t)\right)\right] \\
 &{\overset{(ii)}{=}}\; \mathbb{E}_{\tau \sim \pi_\theta} \left[ \sum_{t=0}^{T-1}\nabla_\theta \log \pi_\theta(a_t|s_t)\left(\sum_{t'=0}^{t-1} r_{t'} + \sum_{t'=t}^{T-1} r_{t'}\right)\right] \\
@@ -123,7 +151,7 @@ Before we introduce a baseline, we can leverage the temporal structure of the MD
 \end{align}
 
 - (i) is what we derived previously
-- (iii) is simply leveraging that the reward-to-go at time $t$ is only relevant to the action being taken at time $t$. The reward experienced in the past for an action you are taking does not matter. So we can throwaway rewards from the past.
+- (iii) is simply leveraging that the reward-to-go at time $t$ is the only relevant reward to the action being taken at time $t$. This is causality: the reward experienced in the past for an action you are taking now is not going to change as a result of that action. So we can throwaway rewards from the past.
 - Let $f_t = \nabla_\theta \log \pi_\theta(a_t|s_t)$. Then, (iii) takes the expectation over the rowwise summation of below. (iv) takes the expectation over the columnwise summation.
      - $\begin{align}
             r_0&f_0 + \\
@@ -132,11 +160,11 @@ Before we introduce a baseline, we can leverage the temporal structure of the MD
             &\cdots \\
             r_{T-1}&f_0 + r_{T-1}f_1 + r_{T-1}f_2 \cdots + r_{T-1}f_{T-1}
         \end{align}$  
-    - The first column is $f_0 \cdot \left(\sum_{t'=0}^{T-1}r_{t'}\right)$, the second column is $f_1 \cdot \left(\sum_{t'=1}^{T-1}r_{t'}\right)$
+     The first column is $f_0 \cdot \left(\sum_{t'=0}^{T-1}r_{t'}\right)$, the second column is $f_1 \cdot \left(\sum_{t'=1}^{T-1}r_{t'}\right)$
 - (iv) notices that reward to go is just the return $G_t$
     
     
-Finally, lets insert a baseline $b(s_t)$ which is a function of $s_t$.
+Finally, let's insert a baseline $b(s_t)$ which is a function of $s_t$.
 
 $$\nabla_\theta \mathbb{E}_{\tau \sim \pi_\theta}[R(\tau)] =
 \mathbb{E}_{\tau \sim \pi_\theta} \left[ \sum_{t=0}^{T-1} \nabla_\theta \log
